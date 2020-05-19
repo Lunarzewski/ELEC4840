@@ -1,6 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from amt.transcribe import open_wav
+from amt.entities import Track
+from amt.utils import open_wav
 
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
@@ -10,6 +11,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.setGeometry(50, 50, 1116, 895)
 
         self.UiComponents()
+
+        # Non UI Components
+        self.track = Track()
 
     def UiComponents(self):
         # Import Wav File Button
@@ -26,9 +30,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.button_transcribe.setGeometry(QtCore.QRect(200, 200, 100, 25))
         self.button_transcribe.clicked.connect(self.transcribe)
 
-        #Error Dialog
-        self.errormessage_error_dialog = QtWidgets.QErrorMessage(self)
-
     def wav_file_open(self):
         file, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                         "Open Wav File",
@@ -43,6 +44,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             if wav_file_path[-4:] != '.wav':
                 raise Exception('Imported file must be a .wav')
             else:
-                open_wav(path=wav_file_path)
+                wav_file = open_wav(path=wav_file_path)
+                self.track.from_wav_file(wav_file)
         except Exception as e:
-            self.errormessage_error_dialog.showMessage(str(e))
+            QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
