@@ -1,4 +1,5 @@
-from amt.utils import estimate_tempo
+from amt.utils import estimate_tempo, estimate_notes
+import numpy as np
 
 
 class Track:
@@ -11,7 +12,8 @@ class Track:
             self.notes = notes
 
     def from_wav_file(self, wav_file):
-        tempo = estimate_tempo(wav_file.read())
-        print(tempo)
+        samples = wav_file.read()
+        self.tempo = int(round(estimate_tempo(samples)))
+        estimate_notes(samples, self.tempo)
         #notes = analyse_notes
         #key = analyse_key
