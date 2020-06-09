@@ -14,6 +14,7 @@ class Track:
     def from_wav_file(self, wav_file):
         samples = wav_file.read()
         self.tempo = int(round(estimate_tempo(samples)))
-        estimate_notes(samples, self.tempo)
+        cqt, piano_roll = estimate_notes(samples, self.tempo)
         #notes = analyse_notes
         #key = analyse_key
+        return cqt, piano_roll

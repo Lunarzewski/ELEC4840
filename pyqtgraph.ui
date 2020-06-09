@@ -14,7 +14,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="PlotWidget" name="graphWidget" native="true">
+   <widget class="GraphicsLayoutWidget" name="graphWidget" native="true">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -39,7 +39,7 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>PlotWidget</class>
+   <class>GraphicsLayoutWidget</class>
    <extends>QWidget</extends>
    <header>pyqtgraph</header>
    <container>1</container>

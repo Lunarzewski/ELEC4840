@@ -37,8 +37,8 @@ def estimate_notes(y, tempo):
                       fmin=librosa.note_to_hz('C2'))
 
     dictionary = np.load('dictionaries/piano_dictionary.npy')
-    # piano_roll = get_piano_roll(cqt, 60, dictionary, tempo)
-    get_piano_roll(cqt, 60, dictionary, tempo)
+    piano_roll = get_piano_roll(cqt, 60, dictionary, tempo)
+    return cqt, piano_roll
 
 
 def get_piano_roll(cqt, number_of_notes, dictionary, tempo):
@@ -52,14 +52,15 @@ def get_piano_roll(cqt, number_of_notes, dictionary, tempo):
     # Get rid of frames lower than minimum
     min_frames = get_minimum_frames(tempo)
     Pp_t = threshold_minimum_frames(Pp_t, min_frames)
-    librosa.display.specshow(Pp_t,
-                             sr=44100,
-                             fmin=librosa.note_to_hz('C2'),
-                             x_axis='time',
-                             y_axis='cqt_note')
-    # plt.vlines(onset_times, ymin=librosa.note_to_hz('C2'), ymax=librosa.note_to_hz('B6'), color='red', alpha=0.8)
-
-    plt.show()
+    # librosa.display.specshow(Pp_t,
+    #                          sr=44100,
+    #                          fmin=librosa.note_to_hz('C2'),
+    #                          x_axis='time',
+    #                          y_axis='cqt_note')
+    # # plt.vlines(onset_times, ymin=librosa.note_to_hz('C2'), ymax=librosa.note_to_hz('B6'), color='red', alpha=0.8)
+    #
+    # plt.show()
+    return Pp_t
 
 
 def threshold_minimum_frames(data_copy, min_frames):
