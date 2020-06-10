@@ -16,6 +16,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Automatic Music Transcription")
         self.setGeometry(50, 50, 1116, 895)
         self.UiComponents()
+        self.set_defaults()
 
         # Non UI Components
         self.track = Track()
@@ -23,17 +24,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.cqt = None
 
     def UiComponents(self):
-        # PLCA Radio Button
-        self.radio_plca_option = QtWidgets.QRadioButton("Piano Roll View", self)
-        self.radio_plca_option.setGeometry(QtCore.QRect(920, 700, 91, 17))
-        self.radio_plca_option.toggled.connect(self.toggle_output_view)
-
-        # CQT Radio Button
-        self.radio_cqt_option = QtWidgets.QRadioButton("CQT View", self)
-        self.radio_cqt_option.setGeometry(QtCore.QRect(920, 750, 91, 17))
-        self.radio_cqt_option.setChecked(True)
-        self.radio_cqt_option.toggled.connect(self.toggle_output_view)
-
         # Import Wav File Button
         self.button_import_wav = QtWidgets.QPushButton("Import Wav File", self)
         self.button_import_wav.setGeometry(QtCore.QRect(200, 300, 100, 25))
@@ -55,13 +45,73 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.img = pg.ImageItem()
         self.p1.addItem(self.img)
         # Cmap
-        pos = np.array([0., 1., 0.5, 0.25, 0.75])
-        color = np.array([[0, 255, 255, 255], [255, 255, 0, 255], [0, 0, 0, 255], (0, 0, 255, 255), (255, 0, 0, 255)],
-                         dtype=np.ubyte)
-        cmap = pg.ColorMap(pos, color)
-        lut = cmap.getLookupTable(0.0, 1.0, 256)
-        self.img.setLookupTable(lut)
-        self.img.setLevels([-50, 40])
+        self.hist = pg.HistogramLUTItem()
+        self.hist.setImageItem(self.img)
+        self.graphWidget.addItem(self.hist)
+        self.hist.gradient.restoreState(
+            {'mode': 'rgb',
+             'ticks': [(1.0, (246, 111, 0, 255)),
+                       (0.0, (75, 0, 113, 255))]})
+
+        # Output view Groupbox
+        # PLCA Radio Button
+        self.radio_plca_option = QtWidgets.QRadioButton("Piano Roll View", self)
+        self.radio_plca_option.toggled.connect(self.toggle_output_view)
+
+        # CQT Radio Button
+        self.radio_cqt_option = QtWidgets.QRadioButton("CQT View", self)
+        self.radio_cqt_option.setChecked(True)
+        self.radio_cqt_option.toggled.connect(self.toggle_output_view)
+
+        self.groupbox_output_view = QtWidgets.QGroupBox("Output View Options", self)
+        vbox_output_view = QtWidgets.QVBoxLayout()
+        vbox_output_view.addWidget(self.radio_cqt_option)
+        vbox_output_view.addWidget(self.radio_plca_option)
+        self.groupbox_output_view.setLayout(vbox_output_view)
+        self.groupbox_output_view.setGeometry(QtCore.QRect(920, 110, 150, 100))
+
+        # Y Axis Parameter Group Box
+        # PLCA Radio Button
+        self.radio_y_frequency = QtWidgets.QRadioButton("Frequency", self)
+        self.radio_y_frequency.setChecked(True)
+        self.radio_y_frequency.toggled.connect(self.toggle_y_axis)
+
+        # CQT Radio Button
+        self.radio_y_note = QtWidgets.QRadioButton("Note", self)
+        self.radio_y_note.toggled.connect(self.toggle_y_axis)
+
+        self.groupbox_y_axis_parameter = QtWidgets.QGroupBox("Y-Axis", self)
+        vbox_y_axis_parameter = QtWidgets.QVBoxLayout()
+        vbox_y_axis_parameter.addWidget(self.radio_y_frequency)
+        vbox_y_axis_parameter.addWidget(self.radio_y_note)
+        self.groupbox_y_axis_parameter.setLayout(vbox_y_axis_parameter)
+        self.groupbox_y_axis_parameter.setGeometry(QtCore.QRect(920, 10, 150, 100))
+
+    def set_defaults(self):
+        self.p1.setLimits(xMin=0, xMax=50, yMin=0, yMax=59)
+        self.p1.setLabel('left', "Frequency", units='Hz')
+        self.p1.setLabel('bottom', "Time", units='s')
+        self.toggle_y_axis()
+
+    def toggle_y_axis(self):
+        freqs = librosa.cqt_frequencies(60,
+                                        fmin=librosa.note_to_hz('C2'),
+                                        bins_per_octave=12)
+        f_axis_dict = []
+        if self.radio_y_frequency.isChecked():
+            freqs_formatted = ['%.2f' % elem for elem in freqs]
+            f_axis_dict = list(dict(enumerate(freqs_formatted)).items())
+            self.p1.setLabel('left', "Frequency", units='Hz')
+        elif self.radio_y_note.isChecked():
+            notes = librosa.hz_to_note(freqs)
+            f_axis_dict = list(dict(enumerate(notes)).items())
+            self.p1.setLabel('left', "Notes", units='')
+
+        major_f_ticks = f_axis_dict[::60 // 4]
+        del f_axis_dict[::60 // 4]
+        minor_f_ticks = f_axis_dict
+        newLeftTicks = self.p1.getAxis('left')
+        newLeftTicks.setTicks([major_f_ticks, minor_f_ticks])
 
     def toggle_output_view(self):
         if self.radio_cqt_option.isChecked() and self.cqt is not None:
@@ -97,18 +147,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         f = range(0, fn)
         t = range(0, tn)
 
-        # TODO More axis options
-        freqs = librosa.cqt_frequencies(60,
-                                        fmin=librosa.note_to_hz('C2'),
-                                        bins_per_octave=12)
-        freqs_formatted = ['%.2f' % elem for elem in freqs]
-        f_axis_dict = list(dict(enumerate(freqs_formatted)).items())
-        major_f_ticks = f_axis_dict[::fn // 4]
-        del f_axis_dict[::fn // 4]
-        minor_f_ticks = f_axis_dict
-        newLeftTicks = self.p1.getAxis('left')
-        newLeftTicks.setTicks([major_f_ticks, minor_f_ticks])
-
         t_values = librosa.frames_to_time(t, sr=SAMPLE_RATE)
         t_formatted = ['%.2f' % elem for elem in t_values]
         t_axis_dict = list(dict(enumerate(t_formatted)).items())
@@ -120,7 +158,3 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Limit panning/zooming to the spectrogram
         self.p1.setLimits(xMin=0, xMax=t[-1], yMin=0, yMax=f[-1])
-        # Add labels to the axis
-        self.p1.setLabel('bottom', "Time", units='s')
-        # If you include the units, Pyqtgraph automatically scales the axis and adjusts the SI prefix (in this case kHz)
-        self.p1.setLabel('left', "Frequency", units='Hz')
