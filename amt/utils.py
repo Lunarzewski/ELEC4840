@@ -43,7 +43,7 @@ def estimate_notes(y, tempo):
 
 def get_piano_roll(cqt, number_of_notes, dictionary, tempo):
     # TODO make threshold adjustable
-    _, Pp_t = plca(cqt, number_of_notes, dictionary)
+    _, Pp_t = plca(cqt, number_of_notes, dictionary, maxstep=50)
 
     # Thresholding
     Pp_t[Pp_t < 0.10] = 0

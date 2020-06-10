@@ -12,7 +12,7 @@ def cross_entropy(U, V):
     return -np.sum(U * np.log(V))
 
 
-def plca(Vo, pn, Pomega_p, maxstep=100, progress_step=5):
+def plca(Vo, pn, Pomega_p, maxstep=100, progress_step=50):
     eps = 1e-8
     step = 0
 

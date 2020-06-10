@@ -2,7 +2,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets, uic
 import pyqtgraph as pg
 import numpy as np
 import librosa
-from collections import OrderedDict
 
 from amt.entities import Track
 from amt.utils import open_wav
@@ -20,8 +19,21 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Non UI Components
         self.track = Track()
+        self.piano_roll = None
+        self.cqt = None
 
     def UiComponents(self):
+        # PLCA Radio Button
+        self.radio_plca_option = QtWidgets.QRadioButton("Piano Roll View", self)
+        self.radio_plca_option.setGeometry(QtCore.QRect(920, 700, 91, 17))
+        self.radio_plca_option.toggled.connect(self.toggle_output_view)
+
+        # CQT Radio Button
+        self.radio_cqt_option = QtWidgets.QRadioButton("CQT View", self)
+        self.radio_cqt_option.setGeometry(QtCore.QRect(920, 750, 91, 17))
+        self.radio_cqt_option.setChecked(True)
+        self.radio_cqt_option.toggled.connect(self.toggle_output_view)
+
         # Import Wav File Button
         self.button_import_wav = QtWidgets.QPushButton("Import Wav File", self)
         self.button_import_wav.setGeometry(QtCore.QRect(200, 300, 100, 25))
@@ -42,7 +54,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.p1 = self.graphWidget.addPlot()
         self.img = pg.ImageItem()
         self.p1.addItem(self.img)
-
         # Cmap
         pos = np.array([0., 1., 0.5, 0.25, 0.75])
         color = np.array([[0, 255, 255, 255], [255, 255, 0, 255], [0, 0, 0, 255], (0, 0, 255, 255), (255, 0, 0, 255)],
@@ -51,6 +62,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         lut = cmap.getLookupTable(0.0, 1.0, 256)
         self.img.setLookupTable(lut)
         self.img.setLevels([-50, 40])
+
+    def toggle_output_view(self):
+        if self.radio_cqt_option.isChecked() and self.cqt is not None:
+            self.graph(np.abs(self.cqt))
+        elif self.radio_plca_option.isChecked() and self.piano_roll is not None:
+            self.graph(self.piano_roll)
 
     def wav_file_open(self):
         file, _ = QtWidgets.QFileDialog.getOpenFileName(self,
@@ -67,8 +84,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 raise Exception('Imported file must be a .wav')
             else:
                 wav_file = open_wav(path=wav_file_path)
-                cqt, piano_roll = self.track.from_wav_file(wav_file)
-                self.graph(np.abs(cqt))
+                self.cqt, self.piano_roll = self.track.from_wav_file(wav_file)
+                self.toggle_output_view()
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
@@ -80,22 +97,27 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         f = range(0, fn)
         t = range(0, tn)
 
-        f_axis_dict = dict(enumerate(librosa.cqt_frequencies(60,
-                                         fmin=librosa.note_to_hz('C2'),
-                                         bins_per_octave=12)))
+        # TODO More axis options
+        freqs = librosa.cqt_frequencies(60,
+                                        fmin=librosa.note_to_hz('C2'),
+                                        bins_per_octave=12)
+        freqs_formatted = ['%.2f' % elem for elem in freqs]
+        f_axis_dict = list(dict(enumerate(freqs_formatted)).items())
+        major_f_ticks = f_axis_dict[::fn // 4]
+        del f_axis_dict[::fn // 4]
+        minor_f_ticks = f_axis_dict
+        newLeftTicks = self.p1.getAxis('left')
+        newLeftTicks.setTicks([major_f_ticks, minor_f_ticks])
+
         t_values = librosa.frames_to_time(t, sr=SAMPLE_RATE)
         t_formatted = ['%.2f' % elem for elem in t_values]
-        t_axis_dict = dict(enumerate(t_formatted))
-        t_axis_dict = list(OrderedDict(sorted(t_axis_dict.items())).items())
-        major_ticks = t_axis_dict[::tn//12]
-        del t_axis_dict[::tn//12]
-        minor_ticks = t_axis_dict
+        t_axis_dict = list(dict(enumerate(t_formatted)).items())
+        major_t_ticks = t_axis_dict[::tn // 12]
+        del t_axis_dict[::tn // 12]
+        minor_t_ticks = t_axis_dict
+        newBottomTicks = self.p1.getAxis('bottom')
+        newBottomTicks.setTicks([major_t_ticks, minor_t_ticks])
 
-        newTicks = self.p1.getAxis('bottom')
-        newTicks.setTicks([major_ticks, minor_ticks])
-
-        self.img.scale(t[-1] / np.size(data, axis=1),
-                       f[-1] / np.size(data, axis=0))
         # Limit panning/zooming to the spectrogram
         self.p1.setLimits(xMin=0, xMax=t[-1], yMin=0, yMax=f[-1])
         # Add labels to the axis
