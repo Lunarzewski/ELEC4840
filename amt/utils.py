@@ -29,7 +29,7 @@ def estimate_tempo(y, start_bpm=120.0):
     return librosa.beat.tempo(y=y, sr=SAMPLE_RATE, start_bpm=start_bpm)[0]
 
 
-def estimate_notes(y, tempo):
+def estimate_piano_roll(y, tempo, plca_threshold, note_length_threshold):
     cqt = librosa.cqt(y,
                       sr=SAMPLE_RATE,
                       n_bins=60,
@@ -37,29 +37,20 @@ def estimate_notes(y, tempo):
                       fmin=librosa.note_to_hz('C2'))
 
     dictionary = np.load('dictionaries/piano_dictionary.npy')
-    piano_roll = get_piano_roll(cqt, 60, dictionary, tempo)
+    piano_roll = get_piano_roll(cqt, 60, dictionary, tempo, plca_threshold, note_length_threshold)
     return cqt, piano_roll
 
 
-def get_piano_roll(cqt, number_of_notes, dictionary, tempo):
-    # TODO make threshold adjustable
+def get_piano_roll(cqt, number_of_notes, dictionary, tempo, plca_threshold, note_length_threshold):
     _, Pp_t = plca(cqt, number_of_notes, dictionary, maxstep=50)
 
     # Thresholding
-    Pp_t[Pp_t < 0.10] = 0
-    Pp_t[Pp_t >= 0.10] = 1
+    Pp_t[Pp_t < plca_threshold] = 0
+    Pp_t[Pp_t >= plca_threshold] = 1
 
     # Get rid of frames lower than minimum
-    min_frames = get_minimum_frames(tempo)
+    min_frames = get_minimum_frames(tempo, note_length_threshold)
     Pp_t = threshold_minimum_frames(Pp_t, min_frames)
-    # librosa.display.specshow(Pp_t,
-    #                          sr=44100,
-    #                          fmin=librosa.note_to_hz('C2'),
-    #                          x_axis='time',
-    #                          y_axis='cqt_note')
-    # # plt.vlines(onset_times, ymin=librosa.note_to_hz('C2'), ymax=librosa.note_to_hz('B6'), color='red', alpha=0.8)
-    #
-    # plt.show()
     return Pp_t
 
 
@@ -88,7 +79,37 @@ def threshold_minimum_frames(data_copy, min_frames):
     return data
 
 
-def get_minimum_frames(tempo):
+def get_minimum_frames(tempo, note_length_threshold):
     sixteenth_note_time = (60.0 / float(tempo)) / 4.0
-    # TODO look into thresholding this?
-    return round(sixteenth_note_time / TIME_PER_FRAME) - 2
+    return round(sixteenth_note_time / TIME_PER_FRAME) - note_length_threshold
+
+
+def estimate_onset_times(data, pre_max=6, post_max=6):
+    return librosa.onset.onset_detect(y=data,
+                                      sr=SAMPLE_RATE,
+                                      units='frames',
+                                      pre_max=pre_max,
+                                      post_max=post_max)
+                                      #pre_avg,
+                                      #post_avg,
+                                      #delta,
+                                      #wait)
+
+
+def smooth_onsets(data, onsets, onset_range=3, prev_note_range=8):
+    for i in range(np.shape(data)[0]):
+        one_mode = False
+        for j in range(np.shape(data)[1]):
+            if data[i, j] == 1 and not one_mode:
+                one_mode = True
+                closest_onset = onsets[(np.abs(onsets - j)).argmin()]
+                if np.abs(np.min([closest_onset, j]) - np.max([closest_onset, j])) > onset_range:
+                    if j != 0:
+                        if j > prev_note_range:
+                            if data[i, j - prev_note_range:j].max() == 1:
+                                data[i, j - prev_note_range:j] = 1
+                        else:
+                            if data[i, 0:j].max() == 1:
+                                data[i, j - prev_note_range:j] = 1
+            if data[i, j] == 0 and one_mode:
+                one_mode = False
