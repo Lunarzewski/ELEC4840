@@ -29,7 +29,7 @@ def estimate_tempo(y, start_bpm=120.0):
     return librosa.beat.tempo(y=y, sr=SAMPLE_RATE, start_bpm=start_bpm)[0]
 
 
-def estimate_notes(y, tempo):
+def estimate_piano_roll(y, tempo):
     cqt = librosa.cqt(y,
                       sr=SAMPLE_RATE,
                       n_bins=60,
@@ -52,14 +52,6 @@ def get_piano_roll(cqt, number_of_notes, dictionary, tempo):
     # Get rid of frames lower than minimum
     min_frames = get_minimum_frames(tempo)
     Pp_t = threshold_minimum_frames(Pp_t, min_frames)
-    # librosa.display.specshow(Pp_t,
-    #                          sr=44100,
-    #                          fmin=librosa.note_to_hz('C2'),
-    #                          x_axis='time',
-    #                          y_axis='cqt_note')
-    # # plt.vlines(onset_times, ymin=librosa.note_to_hz('C2'), ymax=librosa.note_to_hz('B6'), color='red', alpha=0.8)
-    #
-    # plt.show()
     return Pp_t
 
 
@@ -92,3 +84,16 @@ def get_minimum_frames(tempo):
     sixteenth_note_time = (60.0 / float(tempo)) / 4.0
     # TODO look into thresholding this?
     return round(sixteenth_note_time / TIME_PER_FRAME) - 2
+
+
+def estimate_onset_times(data, pre_max=6, post_max=6):
+    # TODO make onset parameters variable
+    return librosa.onset.onset_detect(y=data,
+                                      sr=SAMPLE_RATE,
+                                      units='frames',
+                                      pre_max=pre_max,
+                                      post_max=post_max)
+                                      #pre_avg,
+                                      #post_avg,
+                                      #delta,
+                                      #wait)

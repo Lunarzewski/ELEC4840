@@ -3,10 +3,9 @@ import pyqtgraph as pg
 import numpy as np
 import librosa
 
+from amt import utils
 from amt.entities import Track
 from amt.utils import open_wav
-
-SAMPLE_RATE = 44100
 
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
@@ -20,8 +19,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Non UI Components
         self.track = Track()
-        self.piano_roll = None
-        self.cqt = None
 
     def UiComponents(self):
         # Import Wav File Button
@@ -50,8 +47,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.graphWidget.addItem(self.hist)
         self.hist.gradient.restoreState(
             {'mode': 'rgb',
-             'ticks': [(1.0, (246, 111, 0, 255)),
-                       (0.0, (75, 0, 113, 255))]})
+             'ticks': [(1.0, (254, 0, 2, 255)),
+                       (0.75, (255, 240, 1, 255)),
+                       (0.25, (152, 255, 77, 255)),
+                       (0.0, (3, 2, 252, 255))]})
 
         # Output view Groupbox
         # PLCA Radio Button
@@ -63,12 +62,17 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.radio_cqt_option.setChecked(True)
         self.radio_cqt_option.toggled.connect(self.toggle_output_view)
 
+        # View Onset Lines Checkbox
+        self.checkbox_view_onset_lines = QtWidgets.QCheckBox("View Onsets", self)
+        self.checkbox_view_onset_lines.toggled.connect(self.toggle_onset_lines)
+
         self.groupbox_output_view = QtWidgets.QGroupBox("Output View Options", self)
         vbox_output_view = QtWidgets.QVBoxLayout()
         vbox_output_view.addWidget(self.radio_cqt_option)
         vbox_output_view.addWidget(self.radio_plca_option)
+        vbox_output_view.addWidget(self.checkbox_view_onset_lines)
         self.groupbox_output_view.setLayout(vbox_output_view)
-        self.groupbox_output_view.setGeometry(QtCore.QRect(920, 110, 150, 100))
+        self.groupbox_output_view.setGeometry(QtCore.QRect(920, 110, 150, 150))
 
         # Y Axis Parameter Group Box
         # PLCA Radio Button
@@ -92,6 +96,18 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.p1.setLabel('left', "Frequency", units='Hz')
         self.p1.setLabel('bottom', "Time", units='s')
         self.toggle_y_axis()
+        self.vline_objects = []
+
+    def toggle_onset_lines(self):
+        if not self.vline_objects:
+            return
+
+        if self.checkbox_view_onset_lines.isChecked():
+            for line in self.vline_objects:
+                line.show()
+        if not self.checkbox_view_onset_lines.isChecked():
+            for line in self.vline_objects:
+                line.hide()
 
     def toggle_y_axis(self):
         freqs = librosa.cqt_frequencies(60,
@@ -114,10 +130,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         newLeftTicks.setTicks([major_f_ticks, minor_f_ticks])
 
     def toggle_output_view(self):
-        if self.radio_cqt_option.isChecked() and self.cqt is not None:
-            self.graph(np.abs(self.cqt))
-        elif self.radio_plca_option.isChecked() and self.piano_roll is not None:
-            self.graph(self.piano_roll)
+        if self.radio_cqt_option.isChecked() and self.track.cqt is not None:
+            self.graph(np.abs(self.track.cqt))
+        elif self.radio_plca_option.isChecked() and self.track.piano_roll is not None:
+            self.graph(self.track.piano_roll)
 
     def wav_file_open(self):
         file, _ = QtWidgets.QFileDialog.getOpenFileName(self,
@@ -134,8 +150,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 raise Exception('Imported file must be a .wav')
             else:
                 wav_file = open_wav(path=wav_file_path)
-                self.cqt, self.piano_roll = self.track.from_wav_file(wav_file)
+                self.track.from_wav_file(wav_file)
                 self.toggle_output_view()
+                # Graph onset lines
+                self.graph_onset_lines()
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
@@ -147,7 +165,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         f = range(0, fn)
         t = range(0, tn)
 
-        t_values = librosa.frames_to_time(t, sr=SAMPLE_RATE)
+        t_values = librosa.frames_to_time(t, sr=utils.SAMPLE_RATE)
         t_formatted = ['%.2f' % elem for elem in t_values]
         t_axis_dict = list(dict(enumerate(t_formatted)).items())
         major_t_ticks = t_axis_dict[::tn // 12]
@@ -158,3 +176,21 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Limit panning/zooming to the spectrogram
         self.p1.setLimits(xMin=0, xMax=t[-1], yMin=0, yMax=f[-1])
+
+    def graph_onset_lines(self):
+        # Remove current lines
+        if self.vline_objects:
+            for line in self.vline_objects:
+                self.p1.removeItem(line)
+            self.vline_objects = []
+
+        # No onsets, do nothing
+        if self.track.onsets.size == 0:
+            return
+
+        for onset in self.track.onsets:
+            vline = pg.InfiniteLine(onset)
+            self.vline_objects.append(vline)
+            if not self.checkbox_view_onset_lines.isChecked():
+                vline.hide()
+            self.p1.addItem(vline)
