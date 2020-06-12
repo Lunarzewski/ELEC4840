@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from soundfile import SoundFile
 import pyqtgraph as pg
 import numpy as np
 import librosa
@@ -8,7 +9,26 @@ from amt.entities import Track
 from amt.utils import open_wav
 
 
+class Worker(QtCore.QObject):
+    working_track = QtCore.pyqtSignal(Track)
+
+    @QtCore.pyqtSlot(SoundFile, float, int, int, int, int, int)
+    def track_from_wav_file(self, file, slider_plca_threshold, slider_note_length_threshold, slider_onset_range,
+                            slider_previous_note_range, slider_pre_max, slider_post_max):
+        track = Track()
+        track.from_wav_file(file,
+                            slider_plca_threshold,
+                            slider_note_length_threshold,
+                            slider_onset_range,
+                            slider_previous_note_range,
+                            slider_pre_max,
+                            slider_post_max)
+        self.working_track.emit(track)
+
+
 class Ui_MainWindow(QtWidgets.QMainWindow):
+    transcribe_requested = QtCore.pyqtSignal(SoundFile, float, int, int, int, int, int)
+
     def __init__(self):
         super().__init__()
         uic.loadUi('pyqtgraph.ui', self)
@@ -16,6 +36,16 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.setGeometry(50, 50, 1450, 900)
         self.UiComponents()
         self.set_defaults()
+
+        # Create worker object and thread
+        self.worker = Worker()
+        self.worker_thread = QtCore.QThread()
+        self.worker.moveToThread(self.worker_thread)
+        self.worker_thread.start()
+
+        # Connect signals and slots
+        self.worker.working_track.connect(self.draw_graph)
+        self.transcribe_requested.connect(self.worker.track_from_wav_file)
 
         # Non UI Components
         self.track = Track()
@@ -256,19 +286,22 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 raise Exception('Imported file must be a .wav')
             else:
                 wav_file = open_wav(path=wav_file_path)
-                self.track.from_wav_file(wav_file,
-                                         self.slider_plca_threshold.value() / 100,
-                                         self.slider_note_length_threshold.value(),
-                                         self.slider_onset_range.value(),
-                                         self.slider_previous_note_range.value(),
-                                         self.slider_pre_max.value(),
-                                         self.slider_post_max.value())
-                self.toggle_output_view()
-                # Graph onset lines
-                self.graph_onset_lines()
+                self.transcribe_requested.emit(wav_file,
+                                               self.slider_plca_threshold.value() / 100,
+                                               self.slider_note_length_threshold.value(),
+                                               self.slider_onset_range.value(),
+                                               self.slider_previous_note_range.value(),
+                                               self.slider_pre_max.value(),
+                                               self.slider_post_max.value())
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
+
+    def draw_graph(self, track):
+        self.track = track
+        self.toggle_output_view()
+        # Graph onset lines
+        self.graph_onset_lines()
 
     def graph(self, data):
         self.img.setImage(data)
