@@ -11,6 +11,20 @@ CHANNELS = 1
 SUBTYPE = 'PCM_24'
 HOP_LENGTH = 512
 TIME_PER_FRAME = HOP_LENGTH / SAMPLE_RATE
+PITCH_CLASSES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+NOTE_FREQ_LIST = [2 ** (i / 12) * 440 for i in range(-33, 27)]
+NOTE_NAME_LIST = librosa.hz_to_note(NOTE_FREQ_LIST)
+NOTE_MIDI_LIST = librosa.note_to_midi(NOTE_NAME_LIST)
+KRUMHANSL_MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
+KRUMHANSL_MIN = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+
+
+def get_note_freq_list():
+    freqs = []
+    for i in range(-45, 40):
+        x = 2 ** (i / 12) * 440
+        freqs.append(x)
+    return freqs
 
 
 def open_wav(path):
@@ -90,10 +104,10 @@ def estimate_onset_times(data, pre_max=6, post_max=6):
                                       units='frames',
                                       pre_max=pre_max,
                                       post_max=post_max)
-                                      #pre_avg,
-                                      #post_avg,
-                                      #delta,
-                                      #wait)
+    # pre_avg,
+    # post_avg,
+    # delta,
+    # wait)
 
 
 def smooth_onsets(data, onsets, onset_range=3, prev_note_range=8):
@@ -113,3 +127,11 @@ def smooth_onsets(data, onsets, onset_range=3, prev_note_range=8):
                                 data[i, j - prev_note_range:j] = 1
             if data[i, j] == 0 and one_mode:
                 one_mode = False
+
+
+def round_to_sixteenth(x):
+    return round(x * 16) / 16
+
+
+def rotate(l, n):
+    return l[-n:] + l[:-n]

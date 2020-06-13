@@ -189,8 +189,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.hist.gradient.restoreState(
             {'mode': 'rgb',
              'ticks': [(1.0, (254, 0, 2, 255)),
-                       (0.75, (255, 240, 1, 255)),
-                       (0.25, (152, 255, 77, 255)),
+                       (0.66, (255, 240, 1, 255)),
+                       (0.33, (0, 204, 50, 255)),
                        (0.0, (3, 2, 252, 255))]})
 
         # Output view Groupbox
