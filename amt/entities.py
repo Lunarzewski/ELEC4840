@@ -5,6 +5,8 @@ import numpy as np
 import scipy.stats
 import librosa
 from enum import Enum
+from midiutil import MIDIFile
+import midiutil
 
 
 def estimate_key(notes):
@@ -75,6 +77,26 @@ class Track:
         smooth_onsets(self.piano_roll, self.onsets, onset_range=onset_range, prev_note_range=previous_note_range)
         self.notes = notes_from_piano_roll(self.piano_roll, self.tempo)
         self.key = estimate_key(self.notes)
+
+    def to_midi_file(self, file):
+        midi = MIDIFile(1)
+        midi.addTempo(0, 0, self.tempo)
+
+        if self.key.scale == Scale.MAJOR:
+            mode = midiutil.MAJOR
+        else:
+            mode = midiutil.MINOR
+        if self.key.get_circle_of_fifths()[1] == 'Sharps':
+            accidental_type = midiutil.SHARPS
+        else:
+            accidental_type = midiutil.FLATS
+        midi.addKeySignature(0, 0, self.key.get_circle_of_fifths()[0], accidental_type, mode)
+
+        for note in self.notes:
+            midi.addNote(0, 0, note.pitch.midi_number, note.duration.start_beat * 4, note.duration.total_beat * 4,
+                         utils.MIDI_VOLUME)
+        with open(file, "wb") as output_file:
+            midi.writeFile(output_file)
 
 
 class Note:
@@ -256,6 +278,18 @@ class Key:
     def scale(self, value):
         self.__scale = value
         self.name = self.pitch_class.name.title() + " " + self.scale.name.title()
+
+    def to_display(self):
+        return_str = str(self.pitch_class.name).split('_')
+        if len(return_str) == 1:
+            return return_str[0] + ' ' + self.scale.name.title()
+        if return_str[1] == 'SHARP':
+            return return_str[0] + '#' + ' ' + self.scale.name.title()
+        else:
+            return return_str[0] + '\u266d' + ' ' + self.scale.name.title()
+
+    def get_circle_of_fifths(self):
+        return utils.CIRCLE_OF_FIFTHS[str(self)]
 
 
 class KeyName(Enum):

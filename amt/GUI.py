@@ -176,6 +176,34 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.groupbox_transcribe_options.setLayout(hbox_transcribe_options)
         self.groupbox_transcribe_options.setGeometry(QtCore.QRect(50, 450, 1000, 200))
 
+        # Parameter Estimation Group Box
+        self.label_tempo_name = QtWidgets.QLabel("Tempo:", self)
+        self.label_tempo_estimate = QtWidgets.QLabel("", self)
+        self.label_key_name = QtWidgets.QLabel("Key:", self)
+        self.label_key_estimate = QtWidgets.QLabel("", self)
+        self.groupbox_parameter_estimations = QtWidgets.QGroupBox("Parameter Estimations", self)
+        grid_parameter_estimations = QtWidgets.QGridLayout()
+        grid_parameter_estimations.addWidget(self.label_tempo_name, 0, 0)
+        grid_parameter_estimations.addWidget(self.label_tempo_estimate, 0, 1)
+        grid_parameter_estimations.addWidget(self.label_key_name, 1, 0)
+        grid_parameter_estimations.addWidget(self.label_key_estimate, 1, 1)
+        self.groupbox_parameter_estimations.setLayout(grid_parameter_estimations)
+        self.groupbox_parameter_estimations.setGeometry(QtCore.QRect(1100, 450, 200, 200))
+
+        # Export Group Box
+        self.button_export_midi = QtWidgets.QPushButton("Export MIDI", self)
+        self.button_export_midi.clicked.connect(self.export_midi)
+        self.button_export_midi.setEnabled(False)
+        self.button_export_musicxml = QtWidgets.QPushButton("Export MusicXML", self)
+        self.button_export_musicxml.clicked.connect(self.transcribe)
+        self.button_export_musicxml.setEnabled(False)
+        vbox_export_group_box = QtWidgets.QVBoxLayout()
+        vbox_export_group_box.addWidget(self.button_export_midi)
+        vbox_export_group_box.addWidget(self.button_export_musicxml)
+        self.groupbox_export = QtWidgets.QGroupBox("Export Options", self)
+        self.groupbox_export.setLayout(vbox_export_group_box)
+        self.groupbox_export.setGeometry(QtCore.QRect(1100, 680, 200, 200))
+
         # Plot
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -297,11 +325,21 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
 
+    def export_midi(self):
+        file = QtWidgets.QFileDialog.getSaveFileName(self,
+                                                     "Save MIDI File",
+                                                     "",
+                                                     "MIDI Files (*.mid)")
+        self.track.to_midi_file(file[0])
+
     def draw_graph(self, track):
         self.track = track
+        self.label_tempo_estimate.setText(str(self.track.tempo) + "BPM")
+        self.label_key_estimate.setText(self.track.key.to_display())
         self.toggle_output_view()
         # Graph onset lines
         self.graph_onset_lines()
+        self.button_export_midi.setEnabled(True)
 
     def graph(self, data):
         self.img.setImage(data)

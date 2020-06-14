@@ -17,6 +17,33 @@ NOTE_NAME_LIST = librosa.hz_to_note(NOTE_FREQ_LIST)
 NOTE_MIDI_LIST = librosa.note_to_midi(NOTE_NAME_LIST)
 KRUMHANSL_MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
 KRUMHANSL_MIN = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+MIDI_VOLUME = 100
+CIRCLE_OF_FIFTHS = {
+    'C Major': (0, 'Sharps'),
+    'G Major': (1, 'Sharps'),
+    'D Major': (2, 'Sharps'),
+    'A Major': (3, 'Sharps'),
+    'E Major': (4, 'Sharps'),
+    'B Major': (5, 'Sharps'),
+    'F_Sharp Major': (6, 'Sharps'),
+    'C_Sharp Major': (7, 'Sharps'),
+    'A_Flat Major': (4, 'Flats'),
+    'E_Flat Major': (3, 'Flats'),
+    'B_Flat Major': (2, 'Flats'),
+    'F Major': (1, 'Flats'),
+    'A Minor': (0, 'Sharps'),
+    'E Minor': (1, 'Sharps'),
+    'B Minor': (2, 'Sharps'),
+    'F_Sharp Minor': (3, 'Sharps'),
+    'C_Sharp Minor': (4, 'Sharps'),
+    'A_Flat Minor': (7, 'Flats'),
+    'E_Flat Minor': (6, 'Flats'),
+    'B_Flat Minor': (5, 'Flats'),
+    'F Minor': (4, 'Flats'),
+    'C Minor': (3, 'Flats'),
+    'G Minor': (2, 'Flats'),
+    'D Minor': (1, 'Flats')
+}
 
 
 def get_note_freq_list():
