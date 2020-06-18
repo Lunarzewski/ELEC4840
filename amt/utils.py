@@ -5,6 +5,7 @@ import librosa.display
 import matplotlib.pyplot as plt
 
 from amt.plca import plca
+from enum import Enum
 
 SAMPLE_RATE = 44100
 CHANNELS = 1
@@ -45,6 +46,10 @@ CIRCLE_OF_FIFTHS = {
     'D Minor': (1, 'Flats')
 }
 
+class Instrument(Enum):
+    PIANO = 60
+    GUITAR = 48
+
 
 def get_note_freq_list():
     freqs = []
@@ -70,20 +75,26 @@ def estimate_tempo(y, start_bpm=120.0):
     return librosa.beat.tempo(y=y, sr=SAMPLE_RATE, start_bpm=start_bpm)[0]
 
 
-def estimate_piano_roll(y, tempo, plca_threshold, note_length_threshold):
+def estimate_piano_roll(y, tempo, plca_threshold, note_length_threshold, instrument):
+    if instrument == Instrument.PIANO:
+        fmin = 'C2'
+        dictionary = 'dictionaries/piano_dictionary.npy'
+    else:
+        fmin = 'E2'
+        dictionary = 'dictionaries/guitar_dictionary.npy'
     cqt = librosa.cqt(y,
                       sr=SAMPLE_RATE,
-                      n_bins=60,
+                      n_bins=instrument.value,
                       bins_per_octave=12,
-                      fmin=librosa.note_to_hz('C2'))
+                      fmin=librosa.note_to_hz(fmin))
     display_cqt = librosa.cqt(y,
                               sr=SAMPLE_RATE,
                               n_bins=300,
                               bins_per_octave=60,
                               fmin=librosa.note_to_hz('C2'))
 
-    dictionary = np.load('dictionaries/piano_dictionary.npy')
-    piano_roll = get_piano_roll(cqt, 60, dictionary, tempo, plca_threshold, note_length_threshold)
+    dictionary = np.load(dictionary)
+    piano_roll = get_piano_roll(cqt, instrument.value, dictionary, tempo, plca_threshold, note_length_threshold)
     return cqt, piano_roll, display_cqt
 
 

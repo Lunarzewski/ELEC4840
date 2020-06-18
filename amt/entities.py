@@ -1,6 +1,6 @@
 from amt import utils
 from amt.utils import estimate_tempo, estimate_piano_roll, estimate_onset_times, smooth_onsets, round_to_sixteenth, \
-    rotate
+    rotate, Instrument
 import numpy as np
 import scipy.stats
 import librosa
@@ -63,6 +63,7 @@ class Track:
         self.onsets = []
         self.samples = None
         self.display_cqt = None
+        self.instrument = None
 
     def from_wav_file(self, wav_file,
                       plca_threshold,
@@ -70,12 +71,17 @@ class Track:
                       onset_range,
                       previous_note_range,
                       pre_max,
-                      post_max):
+                      post_max,
+                      instrument):
+        self.instrument = instrument
         self.samples = wav_file.read()
         self.tempo = int(round(estimate_tempo(self.samples)))
-        self.cqt, self.piano_roll, self.display_cqt = estimate_piano_roll(self.samples, self.tempo, plca_threshold, note_length_threshold)
+        self.cqt, self.piano_roll, self.display_cqt = estimate_piano_roll(self.samples, self.tempo, plca_threshold,
+                                                                          note_length_threshold, instrument)
         self.onsets = estimate_onset_times(self.samples, pre_max=pre_max, post_max=post_max)
         smooth_onsets(self.piano_roll, self.onsets, onset_range=onset_range, prev_note_range=previous_note_range)
+        if instrument == Instrument.GUITAR:
+            self.piano_roll = np.pad(self.piano_roll, ((4, 8), (0, 0)))
         self.notes = notes_from_piano_roll(self.piano_roll, self.tempo)
         self.key = estimate_key(self.notes)
 

@@ -6,15 +6,15 @@ import librosa
 
 from amt import utils
 from amt.entities import Track
-from amt.utils import open_wav
+from amt.utils import open_wav, Instrument
 
 
 class Worker(QtCore.QObject):
     working_track = QtCore.pyqtSignal(Track)
 
-    @QtCore.pyqtSlot(SoundFile, float, int, int, int, int, int)
+    @QtCore.pyqtSlot(SoundFile, float, int, int, int, int, int, Instrument)
     def track_from_wav_file(self, file, slider_plca_threshold, slider_note_length_threshold, slider_onset_range,
-                            slider_previous_note_range, slider_pre_max, slider_post_max):
+                            slider_previous_note_range, slider_pre_max, slider_post_max, instrument):
         track = Track()
         track.from_wav_file(file,
                             slider_plca_threshold,
@@ -22,12 +22,13 @@ class Worker(QtCore.QObject):
                             slider_onset_range,
                             slider_previous_note_range,
                             slider_pre_max,
-                            slider_post_max)
+                            slider_post_max,
+                            instrument)
         self.working_track.emit(track)
 
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
-    transcribe_requested = QtCore.pyqtSignal(SoundFile, float, int, int, int, int, int)
+    transcribe_requested = QtCore.pyqtSignal(SoundFile, float, int, int, int, int, int, Instrument)
 
     def __init__(self):
         super().__init__()
@@ -64,9 +65,20 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         hbox_import_wav_file.setGeometry(QtCore.QRect(200, 400, 300, 25))
 
         # Transcribe Options
-        # Transcribe Button
+        # Transcribe Button and Instrument Selection
         self.button_transcribe = QtWidgets.QPushButton("Transcribe", self)
         self.button_transcribe.clicked.connect(self.transcribe)
+        self.radio_piano_option = QtWidgets.QRadioButton("Piano", self)
+        self.radio_piano_option.setChecked(True)
+        self.radio_guitar_option = QtWidgets.QRadioButton("Guitar", self)
+        self.groupbox_instrument_options = QtWidgets.QGroupBox("Instrument", self)
+        vbox_instrument_options = QtWidgets.QVBoxLayout()
+        vbox_instrument_options.addWidget(self.radio_piano_option)
+        vbox_instrument_options.addWidget(self.radio_guitar_option)
+        self.groupbox_instrument_options.setLayout(vbox_instrument_options)
+        vbox_transcribe_option_container = QtWidgets.QVBoxLayout()
+        vbox_transcribe_option_container.addWidget(self.groupbox_instrument_options)
+        vbox_transcribe_option_container.addWidget(self.button_transcribe)
         # Threshold Parameters
         # PLCA Threshold Slider
         self.slider_plca_threshold = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
@@ -172,7 +184,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         hbox_transcribe_options.addWidget(self.groupbox_threshold_parameters)
         hbox_transcribe_options.addWidget(self.groupbox_onset_parameters)
         hbox_transcribe_options.addWidget(self.groupbox_peak_picking_parameters)
-        hbox_transcribe_options.addWidget(self.button_transcribe)
+        # hbox_transcribe_options.addWidget(self.button_transcribe)
+        hbox_transcribe_options.addLayout(vbox_transcribe_option_container)
         self.groupbox_transcribe_options.setLayout(hbox_transcribe_options)
         self.groupbox_transcribe_options.setGeometry(QtCore.QRect(50, 450, 1000, 200))
 
@@ -334,6 +347,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             if wav_file_path[-4:] != '.wav':
                 raise Exception('Imported file must be a .wav')
             else:
+                if self.radio_piano_option.isChecked():
+                    instrument = Instrument.PIANO
+                else:
+                    instrument = Instrument.GUITAR
                 wav_file = open_wav(path=wav_file_path)
                 self.transcribe_requested.emit(wav_file,
                                                self.slider_plca_threshold.value() / 100,
@@ -341,7 +358,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                                self.slider_onset_range.value(),
                                                self.slider_previous_note_range.value(),
                                                self.slider_pre_max.value(),
-                                               self.slider_post_max.value())
+                                               self.slider_post_max.value(),
+                                               instrument)
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
