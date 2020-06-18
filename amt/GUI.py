@@ -274,30 +274,51 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 line.hide()
 
     def toggle_y_axis(self):
-        freqs = librosa.cqt_frequencies(60,
+        freqs = librosa.cqt_frequencies(300,
                                         fmin=librosa.note_to_hz('C2'),
-                                        bins_per_octave=12)
+                                        bins_per_octave=60)
         f_axis_dict = []
-        if self.radio_y_frequency.isChecked():
+        if self.radio_y_frequency.isChecked() and self.radio_cqt_option.isChecked():
             freqs_formatted = ['%.2f' % elem for elem in freqs]
             f_axis_dict = list(dict(enumerate(freqs_formatted)).items())
             self.p1.setLabel('left', "Frequency", units='Hz')
-        elif self.radio_y_note.isChecked():
-            notes = librosa.hz_to_note(freqs)
+            major_f_ticks = f_axis_dict[::300 // 4]
+            del f_axis_dict[::300 // 4]
+            minor_f_ticks = f_axis_dict
+        elif self.radio_y_note.isChecked() and self.radio_cqt_option.isChecked():
+            notes = librosa.hz_to_note(freqs)[::5]
+            temp_dict = {}
+            for i, note in enumerate(notes):
+                temp_dict[i * 5] = note
+            f_axis_dict = list(temp_dict.items())
+            self.p1.setLabel('left', "Notes", units='')
+            major_f_ticks = f_axis_dict[::60 // 4]
+            del f_axis_dict[::60 // 4]
+            minor_f_ticks = f_axis_dict
+        elif self.radio_y_frequency.isChecked() and self.radio_plca_option.isChecked():
+            freqs_formatted = ['%.2f' % elem for elem in freqs]
+            freqs = freqs_formatted[::5]
+            f_axis_dict = list(dict(enumerate(freqs)).items())
+            self.p1.setLabel('left', "Frequency", units='Hz')
+            major_f_ticks = f_axis_dict[::60 // 4]
+            del f_axis_dict[::60 // 4]
+            minor_f_ticks = f_axis_dict
+        elif self.radio_y_note.isChecked() and self.radio_plca_option.isChecked():
+            notes = librosa.hz_to_note(freqs)[::5]
             f_axis_dict = list(dict(enumerate(notes)).items())
             self.p1.setLabel('left', "Notes", units='')
-
-        major_f_ticks = f_axis_dict[::60 // 4]
-        del f_axis_dict[::60 // 4]
-        minor_f_ticks = f_axis_dict
+            major_f_ticks = f_axis_dict[::60 // 4]
+            del f_axis_dict[::60 // 4]
+            minor_f_ticks = f_axis_dict
         newLeftTicks = self.p1.getAxis('left')
         newLeftTicks.setTicks([major_f_ticks, minor_f_ticks])
 
     def toggle_output_view(self):
-        if self.radio_cqt_option.isChecked() and self.track.cqt is not None:
-            self.graph(np.abs(self.track.cqt))
+        if self.radio_cqt_option.isChecked() and self.track.display_cqt is not None:
+            self.graph(np.abs(self.track.display_cqt))
         elif self.radio_plca_option.isChecked() and self.track.piano_roll is not None:
             self.graph(self.track.piano_roll)
+        self.toggle_y_axis()
 
     def wav_file_open(self):
         file, _ = QtWidgets.QFileDialog.getOpenFileName(self,
