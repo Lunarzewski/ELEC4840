@@ -76,10 +76,15 @@ def estimate_piano_roll(y, tempo, plca_threshold, note_length_threshold):
                       n_bins=60,
                       bins_per_octave=12,
                       fmin=librosa.note_to_hz('C2'))
+    display_cqt = librosa.cqt(y,
+                              sr=SAMPLE_RATE,
+                              n_bins=300,
+                              bins_per_octave=60,
+                              fmin=librosa.note_to_hz('C2'))
 
     dictionary = np.load('dictionaries/piano_dictionary.npy')
     piano_roll = get_piano_roll(cqt, 60, dictionary, tempo, plca_threshold, note_length_threshold)
-    return cqt, piano_roll
+    return cqt, piano_roll, display_cqt
 
 
 def get_piano_roll(cqt, number_of_notes, dictionary, tempo, plca_threshold, note_length_threshold):
