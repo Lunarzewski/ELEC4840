@@ -99,12 +99,14 @@ def estimate_piano_roll(y, tempo, plca_threshold, note_length_threshold, instrum
 
 
 def get_piano_roll(cqt, number_of_notes, dictionary, tempo, plca_threshold, note_length_threshold):
-    _, Pp_t = plca(cqt, number_of_notes, dictionary, maxstep=50)
-
+    Pt, Pp_t = plca(cqt, number_of_notes, dictionary, maxstep=50)
     # Thresholding
     Pp_t[Pp_t < plca_threshold] = 0
     Pp_t[Pp_t >= plca_threshold] = 1
-
+    #Dynamics Thresholding
+    Pp_t = Pt * Pp_t
+    Pp_t[Pp_t >= 1] = 1
+    Pp_t[Pp_t < 1] = 0
     # Get rid of frames lower than minimum
     min_frames = get_minimum_frames(tempo, note_length_threshold)
     Pp_t = threshold_minimum_frames(Pp_t, min_frames)

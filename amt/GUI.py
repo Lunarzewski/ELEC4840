@@ -369,7 +369,13 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                                      "Save MIDI File",
                                                      "",
                                                      "MIDI Files (*.mid)")
-        self.track.to_midi_file(file[0])
+        if file[0] != '':
+            try:
+                self.track.to_midi_file(file[0])
+            except Exception as e:
+                QtWidgets.QMessageBox.critical(self, 'MIDI Save Issue', str(e))
+
+
 
     def draw_graph(self, track):
         self.track = track
