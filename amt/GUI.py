@@ -12,9 +12,9 @@ from amt.utils import open_wav, Instrument
 class Worker(QtCore.QObject):
     working_track = QtCore.pyqtSignal(Track)
 
-    @QtCore.pyqtSlot(SoundFile, float, int, int, int, int, int, Instrument)
+    @QtCore.pyqtSlot(SoundFile, float, int, int, int, int, int, Instrument, tuple)
     def track_from_wav_file(self, file, slider_plca_threshold, slider_note_length_threshold, slider_onset_range,
-                            slider_previous_note_range, slider_pre_max, slider_post_max, instrument):
+                            slider_previous_note_range, slider_pre_max, slider_post_max, instrument, time_signature):
         track = Track()
         track.from_wav_file(file,
                             slider_plca_threshold,
@@ -23,12 +23,13 @@ class Worker(QtCore.QObject):
                             slider_previous_note_range,
                             slider_pre_max,
                             slider_post_max,
-                            instrument)
+                            instrument,
+                            time_signature)
         self.working_track.emit(track)
 
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
-    transcribe_requested = QtCore.pyqtSignal(SoundFile, float, int, int, int, int, int, Instrument)
+    transcribe_requested = QtCore.pyqtSignal(SoundFile, float, int, int, int, int, int, Instrument, tuple)
 
     def __init__(self):
         super().__init__()
@@ -65,6 +66,15 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         hbox_import_wav_file.setGeometry(QtCore.QRect(200, 400, 300, 25))
 
         # Transcribe Options
+        # Time Signature Box
+        self.radio_fourfour= QtWidgets.QRadioButton("4 / 4", self)
+        self.radio_fourfour.setChecked(True)
+        self.radio_threefour = QtWidgets.QRadioButton("3 / 4", self)
+        self.groupbox_time_signature = QtWidgets.QGroupBox("Time Signature", self)
+        vbox_time_signature = QtWidgets.QVBoxLayout()
+        vbox_time_signature.addWidget(self.radio_fourfour)
+        vbox_time_signature.addWidget(self.radio_threefour)
+        self.groupbox_time_signature.setLayout(vbox_time_signature)
         # Transcribe Button and Instrument Selection
         self.button_transcribe = QtWidgets.QPushButton("Transcribe", self)
         self.button_transcribe.clicked.connect(self.transcribe)
@@ -185,6 +195,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         hbox_transcribe_options.addWidget(self.groupbox_onset_parameters)
         hbox_transcribe_options.addWidget(self.groupbox_peak_picking_parameters)
         # hbox_transcribe_options.addWidget(self.button_transcribe)
+        hbox_transcribe_options.addWidget(self.groupbox_time_signature)
         hbox_transcribe_options.addLayout(vbox_transcribe_option_container)
         self.groupbox_transcribe_options.setLayout(hbox_transcribe_options)
         self.groupbox_transcribe_options.setGeometry(QtCore.QRect(50, 450, 1000, 200))
@@ -351,6 +362,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                     instrument = Instrument.PIANO
                 else:
                     instrument = Instrument.GUITAR
+                if self.radio_fourfour.isChecked():
+                    time_signature = (4, 4)
+                else:
+                    time_signature = (3, 4)
                 wav_file = open_wav(path=wav_file_path)
                 self.transcribe_requested.emit(wav_file,
                                                self.slider_plca_threshold.value() / 100,
@@ -359,7 +374,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                                self.slider_previous_note_range.value(),
                                                self.slider_pre_max.value(),
                                                self.slider_post_max.value(),
-                                               instrument)
+                                               instrument,
+                                               time_signature)
 
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
