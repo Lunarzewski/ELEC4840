@@ -64,6 +64,7 @@ class Track:
         self.samples = None
         self.display_cqt = None
         self.instrument = None
+        self.time_signature = None
 
     def from_wav_file(self, wav_file,
                       plca_threshold,
@@ -72,7 +73,8 @@ class Track:
                       previous_note_range,
                       pre_max,
                       post_max,
-                      instrument):
+                      instrument,
+                      time_signature):
         self.instrument = instrument
         self.samples = wav_file.read()
         self.tempo = int(round(estimate_tempo(self.samples)))
@@ -84,11 +86,12 @@ class Track:
             self.piano_roll = np.pad(self.piano_roll, ((4, 8), (0, 0)))
         self.notes = notes_from_piano_roll(self.piano_roll, self.tempo)
         self.key = estimate_key(self.notes)
+        self.time_signature = time_signature
 
     def to_midi_file(self, file):
         midi = MIDIFile(1)
         midi.addTempo(0, 0, self.tempo)
-
+        midi.addTimeSignature(0, 0, self.time_signature[0], int(np.sqrt(self.time_signature[1])), 24)
         if self.key.scale == Scale.MAJOR:
             mode = midiutil.MAJOR
         else:
