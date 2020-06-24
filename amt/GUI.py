@@ -388,17 +388,18 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                                         "Open Wav File",
                                                         "",
                                                         "Wav Files (*.wav)")
-        if file:
-            self.lineedit_import_wav.setText(file)
-        try:
-            wav_file_path = self.lineedit_import_wav.text()
-            if wav_file_path[-4:] != '.wav':
-                raise Exception('Imported file must be a .wav')
-            wav_file = open_wav(path=wav_file_path)
-            self.track.samples = wav_file.read()
-            self.transcribe()
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
+        if file != '':
+            if file:
+                self.lineedit_import_wav.setText(file)
+            try:
+                wav_file_path = self.lineedit_import_wav.text()
+                if wav_file_path[-4:] != '.wav':
+                    raise Exception('Imported file must be a .wav')
+                wav_file = open_wav(path=wav_file_path)
+                self.track.samples = wav_file.read()
+                self.transcribe()
+            except Exception as e:
+                QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
 
     def transcribe(self):
         try:
@@ -479,7 +480,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             return
 
         for onset in self.track.onsets:
-            vline = pg.InfiniteLine(onset)
+            vline = pg.InfiniteLine(onset, pen='k')
             self.vline_objects.append(vline)
             if not self.checkbox_view_onset_lines.isChecked():
                 vline.hide()
