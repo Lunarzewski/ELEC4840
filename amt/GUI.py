@@ -15,19 +15,17 @@ from amt.utils import open_wav, Instrument
 class WorkerTranscribe(QtCore.QObject):
     working_track = QtCore.pyqtSignal(Track)
 
-    @QtCore.pyqtSlot(SoundFile, float, int, int, int, int, int, Instrument, tuple)
-    def track_from_wav_file(self, file, slider_plca_threshold, slider_note_length_threshold, slider_onset_range,
-                            slider_previous_note_range, slider_pre_max, slider_post_max, instrument, time_signature):
-        track = Track()
-        track.from_wav_file(file,
-                            slider_plca_threshold,
-                            slider_note_length_threshold,
-                            slider_onset_range,
-                            slider_previous_note_range,
-                            slider_pre_max,
-                            slider_post_max,
-                            instrument,
-                            time_signature)
+    @QtCore.pyqtSlot(Track, float, int, int, int, int, int, Instrument, tuple)
+    def transcribe(self, track, slider_plca_threshold, slider_note_length_threshold, slider_onset_range,
+                   slider_previous_note_range, slider_pre_max, slider_post_max, instrument, time_signature):
+        track.transcribe(slider_plca_threshold,
+                         slider_note_length_threshold,
+                         slider_onset_range,
+                         slider_previous_note_range,
+                         slider_pre_max,
+                         slider_post_max,
+                         instrument,
+                         time_signature)
         self.working_track.emit(track)
 
 
@@ -55,7 +53,7 @@ class WorkerRecord(QtCore.QObject):
 
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
-    transcribe_requested = QtCore.pyqtSignal(SoundFile, float, int, int, int, int, int, Instrument, tuple)
+    transcribe_requested = QtCore.pyqtSignal(Track, float, int, int, int, int, int, Instrument, tuple)
     record_start_requested = QtCore.pyqtSignal()
 
     def __init__(self):
@@ -79,7 +77,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Connect signals and slots
         self.worker_transcribe.working_track.connect(self.draw_graph)
-        self.transcribe_requested.connect(self.worker_transcribe.track_from_wav_file)
+        self.transcribe_requested.connect(self.worker_transcribe.transcribe)
 
         self.worker_record.working_recording.connect(self.recording_finished)
         self.record_start_requested.connect(self.worker_record.recording)
@@ -108,7 +106,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Transcribe Options
         # Time Signature Box
-        self.radio_fourfour= QtWidgets.QRadioButton("4 / 4", self)
+        self.radio_fourfour = QtWidgets.QRadioButton("4 / 4", self)
         self.radio_fourfour.setChecked(True)
         self.radio_threefour = QtWidgets.QRadioButton("3 / 4", self)
         self.groupbox_time_signature = QtWidgets.QGroupBox("Time Signature", self)
@@ -392,38 +390,43 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                                         "Wav Files (*.wav)")
         if file:
             self.lineedit_import_wav.setText(file)
-
-    def transcribe(self):
         try:
             wav_file_path = self.lineedit_import_wav.text()
             if wav_file_path[-4:] != '.wav':
                 raise Exception('Imported file must be a .wav')
-            else:
-                if self.radio_piano_option.isChecked():
-                    instrument = Instrument.PIANO
-                else:
-                    instrument = Instrument.GUITAR
-                if self.radio_fourfour.isChecked():
-                    time_signature = (4, 4)
-                else:
-                    time_signature = (3, 4)
-                wav_file = open_wav(path=wav_file_path)
-                self.transcribe_requested.emit(wav_file,
-                                               self.slider_plca_threshold.value() / 100,
-                                               self.slider_note_length_threshold.value(),
-                                               self.slider_onset_range.value(),
-                                               self.slider_previous_note_range.value(),
-                                               self.slider_pre_max.value(),
-                                               self.slider_post_max.value(),
-                                               instrument,
-                                               time_signature)
-
+            wav_file = open_wav(path=wav_file_path)
+            self.track.samples = wav_file.read()
+            self.transcribe()
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Wav Import Issue', str(e))
 
+    def transcribe(self):
+        try:
+            if self.track.samples is None:
+                raise Exception('There is no track loaded')
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, 'Transcribe Issue', str(e))
+        if self.radio_piano_option.isChecked():
+            instrument = Instrument.PIANO
+        else:
+            instrument = Instrument.GUITAR
+        if self.radio_fourfour.isChecked():
+            time_signature = (4, 4)
+        else:
+            time_signature = (3, 4)
+        self.transcribe_requested.emit(self.track,
+                                       self.slider_plca_threshold.value() / 100,
+                                       self.slider_note_length_threshold.value(),
+                                       self.slider_onset_range.value(),
+                                       self.slider_previous_note_range.value(),
+                                       self.slider_pre_max.value(),
+                                       self.slider_post_max.value(),
+                                       instrument,
+                                       time_signature)
+
     def recording_finished(self, samples):
         self.track.samples = samples
-
+        self.transcribe()
 
     def export_midi(self):
         file = QtWidgets.QFileDialog.getSaveFileName(self,

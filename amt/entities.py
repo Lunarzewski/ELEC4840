@@ -21,7 +21,7 @@ def estimate_key(notes):
         min_scores.append(scipy.stats.pearsonr(song_distribution, rotate(utils.KRUMHANSL_MIN, i))[0])
     max_score = np.argmax([maj_scores, min_scores])
     if max_score > 11:
-        key = Key(pitch_class=KeyName(max_score-12), scale=Scale.MINOR)
+        key = Key(pitch_class=KeyName(max_score - 12), scale=Scale.MINOR)
     else:
         key = Key(pitch_class=KeyName(max_score), scale=Scale.MAJOR)
     return key
@@ -66,17 +66,16 @@ class Track:
         self.instrument = None
         self.time_signature = None
 
-    def from_wav_file(self, wav_file,
-                      plca_threshold,
-                      note_length_threshold,
-                      onset_range,
-                      previous_note_range,
-                      pre_max,
-                      post_max,
-                      instrument,
-                      time_signature):
+    def transcribe(self,
+                   plca_threshold,
+                   note_length_threshold,
+                   onset_range,
+                   previous_note_range,
+                   pre_max,
+                   post_max,
+                   instrument,
+                   time_signature):
         self.instrument = instrument
-        self.samples = wav_file.read()
         self.tempo = int(round(estimate_tempo(self.samples)))
         self.cqt, self.piano_roll, self.display_cqt = estimate_piano_roll(self.samples, self.tempo, plca_threshold,
                                                                           note_length_threshold, instrument)
