@@ -235,6 +235,8 @@ class Duration:
         self.__total_time = value
         # self.__start_beat = min(self.get_beat_time_dict().items(), key=lambda x: np.abs(x[1] - value))
         self.__total_beat = round_to_sixteenth(0.25 * (value / self.quarter_note_time))
+        if self.__total_beat == 0:
+            self.__total_beat = 0.0625
         self.__total_frames = librosa.time_to_frames(value, sr=utils.SAMPLE_RATE)
 
     @start_beat.setter
@@ -260,6 +262,8 @@ class Duration:
         self.__total_frames = value
         self.__total_time = librosa.frames_to_time(value, sr=utils.SAMPLE_RATE)
         self.__total_beat = round_to_sixteenth(0.25 * (self.__total_time / self.quarter_note_time))
+        if self.__total_beat == 0:
+            self.__total_beat = 0.0625
 
 
 class Key:
